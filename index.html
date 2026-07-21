@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thai Tax Calculator — คำนวณภาษีเงินได้บุคคลธรรมดา + วางแผนลดหย่อน</title>
+<style>
+:root{
+  --bg:#0d1016; --panel:#151a23; --panel2:#1d2330; --border:#2a3242;
+  --text:#e9ecf3; --muted:#8b95a8; --accent:#4ade80; --accent2:#22c55e;
+  --warn:#f5a623; --err:#ff5c72; --radius:14px;
+}
+:root[data-theme="light"]{
+  --bg:#f4f6f9; --panel:#ffffff; --panel2:#edf0f5; --border:#dbe0e9;
+  --text:#18202e; --muted:#5f6879; --accent:#16a34a; --accent2:#15803d;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:16px 26px;border-bottom:1px solid var(--border);background:var(--panel);flex-wrap:wrap}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#0e7a3a);display:grid;place-items:center;font-size:19px}
+header h1{font-size:18px}
+header .sub{font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:8px 14px;cursor:pointer;transition:.15s}
+button:hover{border-color:var(--accent)}
+main{max-width:1150px;margin:0 auto;padding:24px 26px;display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:20px}
+.panel h2{font-size:15px;margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:5px}
+.field label .cap{font-size:11px}
+input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:9px 12px;font:inherit;font-variant-numeric:tabular-nums}
+input:focus{outline:none;border-color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.result-big{text-align:center;padding:10px 0 4px}
+.result-big .n{font-size:40px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.result-big .l{font-size:13px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0}
+.stat{background:var(--panel2);border-radius:10px;padding:12px;text-align:center}
+.stat .n{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{color:var(--muted);font-size:11px;text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
+td{padding:7px 8px;border-bottom:1px solid var(--border)}
+td:last-child,th:last-child{text-align:right}
+tr.active td{color:var(--accent);font-weight:600}
+.planner{background:linear-gradient(135deg,rgba(74,222,128,.08),transparent);border-color:rgba(74,222,128,.35)}
+.saving{font-size:15px;margin-top:10px;padding:12px;background:var(--panel2);border-radius:10px}
+.saving b{color:var(--accent)}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.sumline{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 2px;font-variant-numeric:tabular-nums}
+.sumline span:last-child{color:var(--text)}
+.disclaimer{font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:10px;padding:12px;margin-top:6px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:20px;border-top:1px solid var(--border)}
+footer a{color:var(--accent)}
+details{margin-bottom:12px;border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+summary{cursor:pointer;font-size:14px;font-weight:600}
+details[open]{padding-bottom:4px}
+details .inner{margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🧾</div>
+  <div>
+    <h1 data-i18n="title">Thai Personal Income Tax Calculator</h1>
+    <div class="sub" data-i18n="subtitle">คำนวณภาษีเงินได้บุคคลธรรมดา + โหมดวางแผนลดหย่อน</div>
+  </div>
+  <div class="spacer"></div>
+  <button id="btnLang">EN | <b>ไทย</b></button>
+  <button id="btnTheme">🌓</button>
+</header>
+
+<main>
+  <section>
+    <div class="panel">
+      <h2 data-i18n="hIncome">💼 รายได้ต่อปี</h2>
+      <div class="field">
+        <label><span data-i18n="salary">เงินเดือน/ค่าจ้างรวมทั้งปี (มาตรา 40(1)(2))</span></label>
+        <input type="number" id="salary" value="600000" min="0" step="10000">
+      </div>
+      <div class="field">
+        <label><span data-i18n="bonus">โบนัส/รายได้อื่นประเภทเดียวกัน</span></label>
+        <input type="number" id="bonus" value="0" min="0" step="10000">
+      </div>
+      <div class="hint" data-i18n="expenseNote">หักค่าใช้จ่ายอัตโนมัติ 50% ของเงินได้ (สูงสุด 100,000 บาท) ตามกฎหมาย</div>
+    </div>
+
+    <div class="panel">
+      <h2 data-i18n="hDeduct">📋 ค่าลดหย่อน</h2>
+      <details open><summary data-i18n="dFamily">ส่วนตัวและครอบครัว</summary><div class="inner">
+        <div class="grid2">
+          <div class="field"><label><span data-i18n="spouse">คู่สมรสไม่มีรายได้ (0/1)</span><span class="cap">×60,000</span></label><input type="number" id="spouse" value="0" min="0" max="1"></div>
+          <div class="field"><label><span data-i18n="children">บุตร (คน)</span><span class="cap">×30,000</span></label><input type="number" id="children" value="0" min="0" max="10"></div>
+          <div class="field"><label><span data-i18n="parents">อุปการะบิดามารดา (คน, สูงสุด 4)</span><span class="cap">×30,000</span></label><input type="number" id="parents" value="0" min="0" max="4"></div>
+          <div class="field"><label><span data-i18n="disabled">ผู้พิการ/ทุพพลภาพ (คน)</span><span class="cap">×60,000</span></label><input type="number" id="disabled" value="0" min="0" max="4"></div>
+        </div>
+        <div class="hint" data-i18n="personalNote">ลดหย่อนส่วนตัว 60,000 บาท ถูกหักให้อัตโนมัติแล้ว</div>
+      </div></details>
+
+      <details open><summary data-i18n="dInsure">ประกันและกองทุน</summary><div class="inner">
+        <div class="grid2">
+          <div class="field"><label><span data-i18n="sso">ประกันสังคม</span><span class="cap">≤9,000</span></label><input type="number" id="sso" value="9000" min="0" max="9000"></div>
+          <div class="field"><label><span data-i18n="lifeIns">เบี้ยประกันชีวิต + ประกันสุขภาพตนเอง</span><span class="cap">≤100,000</span></label><input type="number" id="lifeIns" value="0" min="0"></div>
+          <div class="field"><label><span data-i18n="healthParent">ประกันสุขภาพบิดามารดา</span><span class="cap">≤15,000</span></label><input type="number" id="healthParent" value="0" min="0"></div>
+          <div class="field"><label><span data-i18n="pvd">กองทุนสำรองเลี้ยงชีพ (PVD)/กบข.</span><span class="cap">≤15% &amp; 500k*</span></label><input type="number" id="pvd" value="0" min="0"></div>
+        </div>
+      </div></details>
+
+      <details open><summary data-i18n="dInvest">การลงทุนลดหย่อน (RMF / ThaiESG / ประกันบำนาญ)</summary><div class="inner">
+        <div class="field">
+          <label><span data-i18n="rmf">RMF</span><span class="cap" data-i18n="rmfCap">≤30% ของเงินได้</span></label>
+          <input type="number" id="rmf" value="0" min="0" step="5000">
+          <input type="range" id="rmfSlide" value="0" min="0" max="500000" step="5000">
+        </div>
+        <div class="field">
+          <label><span data-i18n="esg">ThaiESG</span><span class="cap" data-i18n="esgCap">≤30% ของเงินได้ &amp; 300,000</span></label>
+          <input type="number" id="esg" value="0" min="0" step="5000">
+          <input type="range" id="esgSlide" value="0" min="0" max="300000" step="5000">
+        </div>
+        <div class="field">
+          <label><span data-i18n="annuity">ประกันบำนาญ</span><span class="cap">≤15% &amp; 200,000</span></label>
+          <input type="number" id="annuity" value="0" min="0" step="5000">
+        </div>
+        <div class="hint" data-i18n="retireCapNote">* กลุ่มเกษียณ (RMF + PVD + ประกันบำนาญ + กอช.) รวมกันไม่เกิน 500,000 บาท — ระบบตัดยอดให้อัตโนมัติ</div>
+      </div></details>
+
+      <details><summary data-i18n="dOther">อื่นๆ</summary><div class="inner">
+        <div class="grid2">
+          <div class="field"><label><span data-i18n="homeInt">ดอกเบี้ยบ้าน</span><span class="cap">≤100,000</span></label><input type="number" id="homeInt" value="0" min="0"></div>
+          <div class="field"><label><span data-i18n="donate">เงินบริจาคทั่วไป</span><span class="cap" data-i18n="donateCap">≤10% หลังหักลดหย่อน</span></label><input type="number" id="donate" value="0" min="0"></div>
+          <div class="field"><label><span data-i18n="donateEdu">บริจาคการศึกษา/กีฬา (นับ 2 เท่า)</span></label><input type="number" id="donateEdu" value="0" min="0"></div>
+          <div class="field"><label><span data-i18n="easyRcpt">Easy E-Receipt / มาตรการรัฐปีนั้นๆ</span><span class="cap">≤50,000</span></label><input type="number" id="easyRcpt" value="0" min="0" max="50000"></div>
+        </div>
+      </div></details>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <h2 data-i18n="hResult">💡 ผลการคำนวณ</h2>
+      <div class="result-big">
+        <div class="n" id="taxDue">0 ฿</div>
+        <div class="l" data-i18n="taxDueL">ภาษีที่ต้องชำระทั้งปี</div>
+      </div>
+      <div class="sumline"><span data-i18n="sumGrossL">เงินได้รวมทั้งปี</span><span id="sumGross">0</span></div>
+      <div class="sumline"><span data-i18n="sumExpenseL">หักค่าใช้จ่าย (50% ไม่เกิน 100,000)</span><span id="sumExpense">0</span></div>
+      <div class="sumline"><span data-i18n="sumDedL">หักค่าลดหย่อนรวม</span><span id="sumDed">0</span></div>
+      <div class="stats">
+        <div class="stat"><div class="n" id="netIncome">0</div><div class="l" data-i18n="netL">เงินได้สุทธิ</div></div>
+        <div class="stat"><div class="n" id="effRate">0%</div><div class="l" data-i18n="effL">อัตราภาษีเฉลี่ย</div></div>
+        <div class="stat"><div class="n" id="margRate">0%</div><div class="l" data-i18n="margL">อัตราขั้นสูงสุดที่โดน</div></div>
+      </div>
+      <table id="bracketTable">
+        <thead><tr><th data-i18n="thBracket">ขั้นเงินได้สุทธิ</th><th data-i18n="thRate">อัตรา</th><th data-i18n="thTax">ภาษีขั้นนี้</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="panel planner">
+      <h2 data-i18n="hPlan">🎯 โหมดวางแผน — ซื้อเพิ่มอีกเท่าไหร่ดี?</h2>
+      <div class="hint" data-i18n="planHint">เลื่อน slider RMF/ThaiESG ทางซ้าย แล้วดูภาษีที่ประหยัดได้ที่นี่ทันที</div>
+      <div class="saving" id="savingBox"></div>
+    </div>
+
+    <div class="disclaimer" data-i18n="disclaimer">
+      ⚠️ เครื่องมือนี้ใช้เพื่อการประมาณการเบื้องต้นตามโครงสร้างภาษีปี 2568 เท่านั้น เพดานลดหย่อนบางรายการเปลี่ยนตามประกาศแต่ละปี โปรดตรวจสอบกับกรมสรรพากร (rd.go.th) หรือผู้เชี่ยวชาญก่อนยื่นจริง — ไม่ใช่คำแนะนำทางภาษีหรือการลงทุน
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span data-i18n="footer">อัตราภาษีอ้างอิงบัญชีอัตราภาษีเงินได้บุคคลธรรมดา กรมสรรพากร</span> ·
+  <a href="https://www.rd.go.th" target="_blank">rd.go.th</a> · MIT License
+</footer>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+
+/* ===== i18n ===== */
+const T={
+ th:{
+  title:"คำนวณภาษีเงินได้บุคคลธรรมดา",subtitle:"Thai Personal Income Tax Calculator + โหมดวางแผนลดหย่อน",
+  hIncome:"💼 รายได้ต่อปี",salary:"เงินเดือน/ค่าจ้างรวมทั้งปี (มาตรา 40(1)(2))",bonus:"โบนัส/รายได้อื่นประเภทเดียวกัน",
+  expenseNote:"หักค่าใช้จ่ายอัตโนมัติ 50% ของเงินได้ (สูงสุด 100,000 บาท) ตามกฎหมาย",
+  hDeduct:"📋 ค่าลดหย่อน",dFamily:"ส่วนตัวและครอบครัว",spouse:"คู่สมรสไม่มีรายได้ (0/1)",children:"บุตร (คน)",
+  parents:"อุปการะบิดามารดา (คน, สูงสุด 4)",disabled:"ผู้พิการ/ทุพพลภาพ (คน)",
+  personalNote:"ลดหย่อนส่วนตัว 60,000 บาท ถูกหักให้อัตโนมัติแล้ว",
+  dInsure:"ประกันและกองทุน",sso:"ประกันสังคม",lifeIns:"เบี้ยประกันชีวิต + ประกันสุขภาพตนเอง",
+  healthParent:"ประกันสุขภาพบิดามารดา",pvd:"กองทุนสำรองเลี้ยงชีพ (PVD)/กบข.",
+  dInvest:"การลงทุนลดหย่อน (RMF / ThaiESG / ประกันบำนาญ)",rmf:"RMF",rmfCap:"≤30% ของเงินได้",
+  esg:"ThaiESG",esgCap:"≤30% ของเงินได้ & 300,000",annuity:"ประกันบำนาญ",
+  retireCapNote:"* กลุ่มเกษียณ (RMF + PVD + ประกันบำนาญ + กอช.) รวมกันไม่เกิน 500,000 บาท — ระบบตัดยอดให้อัตโนมัติ",
+  dOther:"อื่นๆ",homeInt:"ดอกเบี้ยบ้าน",donate:"เงินบริจาคทั่วไป",donateCap:"≤10% หลังหักลดหย่อน",
+  donateEdu:"บริจาคการศึกษา/กีฬา (นับ 2 เท่า)",easyRcpt:"Easy E-Receipt / มาตรการรัฐปีนั้นๆ",
+  hResult:"💡 ผลการคำนวณ",taxDueL:"ภาษีที่ต้องชำระทั้งปี",
+  sumGrossL:"เงินได้รวมทั้งปี",sumExpenseL:"หักค่าใช้จ่าย (50% ไม่เกิน 100,000)",sumDedL:"หักค่าลดหย่อนรวม",netL:"เงินได้สุทธิ",effL:"อัตราภาษีเฉลี่ย",margL:"อัตราขั้นสูงสุดที่โดน",
+  thBracket:"ขั้นเงินได้สุทธิ",thRate:"อัตรา",thTax:"ภาษีขั้นนี้",
+  hPlan:"🎯 โหมดวางแผน — ซื้อเพิ่มอีกเท่าไหร่ดี?",
+  planHint:"เลื่อน slider RMF/ThaiESG ทางซ้าย แล้วดูภาษีที่ประหยัดได้ที่นี่ทันที",
+  disclaimer:"⚠️ เครื่องมือนี้ใช้เพื่อการประมาณการเบื้องต้นตามโครงสร้างภาษีปี 2568 เท่านั้น เพดานลดหย่อนบางรายการเปลี่ยนตามประกาศแต่ละปี โปรดตรวจสอบกับกรมสรรพากร (rd.go.th) หรือผู้เชี่ยวชาญก่อนยื่นจริง — ไม่ใช่คำแนะนำทางภาษีหรือการลงทุน",
+  footer:"อัตราภาษีอ้างอิงบัญชีอัตราภาษีเงินได้บุคคลธรรมดา กรมสรรพากร",
+  savingNone:"ยังไม่ได้ใส่ RMF/ThaiESG — ลองเลื่อน slider ดูว่าประหยัดภาษีได้เท่าไหร่",
+  saving:(inv,save,eff)=>`ลงทุนเพิ่ม <b>${inv} ฿</b> (RMF+ThaiESG+บำนาญ) → ประหยัดภาษี <b>${save} ฿</b><br>เท่ากับได้ส่วนลดทันที <b>${eff}%</b> ของเงินที่ลงทุน`,
+  perMonth:m=>`ภาษีเฉลี่ยเดือนละ ~${m} ฿`
+ },
+ en:{
+  title:"Thai Personal Income Tax Calculator",subtitle:"Personal income tax + deduction planning mode",
+  hIncome:"💼 Annual income",salary:"Total annual salary/wages (Sec. 40(1)(2))",bonus:"Bonus / other same-type income",
+  expenseNote:"Standard expense of 50% of income (capped at ฿100,000) is deducted automatically per law",
+  hDeduct:"📋 Deductions & allowances",dFamily:"Personal & family",spouse:"Spouse with no income (0/1)",children:"Children (count)",
+  parents:"Dependent parents (max 4)",disabled:"Disabled dependents (count)",
+  personalNote:"Personal allowance ฿60,000 is applied automatically",
+  dInsure:"Insurance & funds",sso:"Social security",lifeIns:"Life + own health insurance premiums",
+  healthParent:"Parents' health insurance",pvd:"Provident fund (PVD)/GPF",
+  dInvest:"Tax-saving investments (RMF / ThaiESG / Annuity)",rmf:"RMF",rmfCap:"≤30% of income",
+  esg:"ThaiESG",esgCap:"≤30% of income & ฿300,000",annuity:"Pension/annuity insurance",
+  retireCapNote:"* Retirement group (RMF + PVD + annuity + NSF) capped at ฿500,000 combined — applied automatically",
+  dOther:"Other",homeInt:"Home loan interest",donate:"General donations",donateCap:"≤10% after allowances",
+  donateEdu:"Education/sports donations (counted 2×)",easyRcpt:"Easy E-Receipt / yearly gov. measures",
+  hResult:"💡 Result",taxDueL:"Total tax due for the year",
+  sumGrossL:"Gross annual income",sumExpenseL:"Standard expense (50%, max 100,000)",sumDedL:"Total allowances",netL:"Net taxable income",effL:"Effective rate",margL:"Marginal rate",
+  thBracket:"Net income bracket",thRate:"Rate",thTax:"Tax in bracket",
+  hPlan:"🎯 Planning mode — how much more should you invest?",
+  planHint:"Drag the RMF/ThaiESG sliders on the left and watch your tax savings update instantly",
+  disclaimer:"⚠️ Estimates based on the 2025 (B.E. 2568) tax structure. Some deduction caps change with yearly announcements. Verify with the Revenue Department (rd.go.th) or a professional before filing — not tax or investment advice.",
+  footer:"Tax brackets per the Thai Revenue Department's personal income tax schedule",
+  savingNone:"No RMF/ThaiESG yet — try the sliders to see how much tax you could save",
+  saving:(inv,save,eff)=>`Investing <b>฿${inv}</b> (RMF+ThaiESG+annuity) → saves <b>฿${save}</b> in tax<br>an instant <b>${eff}%</b> return on the amount invested`,
+  perMonth:m=>`≈ ฿${m} tax per month`
+ }
+};
+let lang=localStorage.getItem("ttx-lang")||"th";
+function applyLang(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n; if(T[lang][k]) el.innerHTML=T[lang][k];});
+  $("#btnLang").innerHTML=lang==="th"?"EN | <b>ไทย</b>":"<b>EN</b> | ไทย";
+  document.documentElement.lang=lang;
+  calc();
+}
+$("#btnLang").onclick=()=>{lang=lang==="th"?"en":"th";localStorage.setItem("ttx-lang",lang);applyLang();};
+
+const root=document.documentElement;
+root.dataset.theme=localStorage.getItem("ttx-theme")||"dark";
+$("#btnTheme").onclick=()=>{root.dataset.theme=root.dataset.theme==="dark"?"light":"dark";localStorage.setItem("ttx-theme",root.dataset.theme);};
+
+/* ===== tax engine (Thai PIT, tax year 2568/2025 structure) ===== */
+// บัญชีอัตราภาษีก้าวหน้า — กรมสรรพากร
+const BRACKETS=[
+  [0,150000,0],[150000,300000,.05],[300000,500000,.10],[500000,750000,.15],
+  [750000,1000000,.20],[1000000,2000000,.25],[2000000,5000000,.30],[5000000,Infinity,.35]
+];
+const fmt=n=>Math.round(n).toLocaleString("en-US");
+const pct=r=>Math.round(r*100)+"%"; // avoid 0.15*100 → 15.000000000000002
+const V=id=>{const v=+$("#"+id).value;return Number.isFinite(v)?Math.max(0,v):0;};
+const C=id=>Math.floor(V(id)); // integer counts (people)
+
+function computeTax(extraRetire=0){
+  const gross=V("salary")+V("bonus");
+  const expense=Math.min(gross*0.5,100000);
+
+  // family
+  let ded=60000; // personal
+  ded+=Math.min(1,C("spouse"))*60000;
+  ded+=C("children")*30000;
+  ded+=Math.min(4,C("parents"))*30000;
+  ded+=Math.min(4,C("disabled"))*60000;
+
+  // insurance & funds
+  ded+=Math.min(V("sso"),9000);
+  ded+=Math.min(V("lifeIns"),100000);
+  ded+=Math.min(V("healthParent"),15000);
+
+  // retirement group: PVD(≤15% income) + RMF(≤30%) + annuity(≤15% & 200k) — combined cap 500k
+  const pvd=Math.min(V("pvd"),gross*0.15);
+  const rmf=Math.min(V("rmf")+extraRetire,gross*0.30);
+  const annuity=Math.min(V("annuity"),gross*0.15,200000);
+  ded+=Math.min(pvd+rmf+annuity,500000);
+
+  // ThaiESG: separate cap
+  ded+=Math.min(V("esg"),gross*0.30,300000);
+
+  ded+=Math.min(V("homeInt"),100000);
+  ded+=Math.min(V("easyRcpt"),50000); // Easy E-Receipt 2568 cap ฿50,000
+
+  // donations: after all other deductions, each capped at 10% of remainder
+  let net=Math.max(0,gross-expense-ded);
+  const donEdu=Math.min(V("donateEdu")*2,net*0.10); net-=donEdu;
+  const donGen=Math.min(V("donate"),net*0.10);      net-=donGen;
+
+  let tax=0,marg=0;
+  const rows=BRACKETS.map(([lo,hi,r])=>{
+    const amt=Math.max(0,Math.min(net,hi)-lo);
+    const t=amt*r; tax+=t;
+    if(amt>0&&r>0) marg=r;
+    return {lo,hi,r,t,active:amt>0};
+  });
+  return {gross,net,tax,marg,rows,expense,ded:ded+donEdu+donGen};
+}
+
+function calc(){
+  const r=computeTax();
+  $("#taxDue").textContent=fmt(r.tax)+" ฿";
+  $("#netIncome").textContent=fmt(r.net);
+  $("#effRate").textContent=r.gross?((r.tax/r.gross)*100).toFixed(1)+"%":"0%";
+  $("#margRate").textContent=pct(r.marg);
+  $("#sumGross").textContent=fmt(r.gross);
+  $("#sumExpense").textContent="−"+fmt(r.expense);
+  $("#sumDed").textContent="−"+fmt(Math.min(r.ded,Math.max(0,r.gross-r.expense)));
+
+  const tb=$("#bracketTable tbody"); tb.innerHTML="";
+  r.rows.forEach(({lo,hi,r:rate,t,active})=>{
+    const tr=document.createElement("tr");
+    if(active) tr.className="active";
+    tr.innerHTML=`<td>${fmt(lo)} – ${hi===Infinity?"∞":fmt(hi)}</td><td>${pct(rate)}</td><td>${fmt(t)}</td>`;
+    tb.appendChild(tr);
+  });
+
+  // planning box: current invest vs zero-invest baseline
+  const invested=V("rmf")+V("esg")+V("annuity");
+  const baseline=(()=>{ // recompute with zero investments
+    const keep={rmf:$("#rmf").value,esg:$("#esg").value,annuity:$("#annuity").value};
+    $("#rmf").value=0;$("#esg").value=0;$("#annuity").value=0;
+    const b=computeTax();
+    $("#rmf").value=keep.rmf;$("#esg").value=keep.esg;$("#annuity").value=keep.annuity;
+    return b;
+  })();
+  const saved=baseline.tax-r.tax;
+  $("#savingBox").innerHTML=invested>0
+    ? T[lang].saving(fmt(invested),fmt(saved),invested?((saved/invested)*100).toFixed(1):0)+`<div class="hint" style="margin-top:6px">${T[lang].perMonth(fmt(r.tax/12))}</div>`
+    : T[lang].savingNone;
+}
+
+/* slider ↔ number sync */
+[["rmf","rmfSlide"],["esg","esgSlide"]].forEach(([n,s])=>{
+  $("#"+s).addEventListener("input",()=>{$("#"+n).value=$("#"+s).value;calc();});
+  $("#"+n).addEventListener("input",()=>{$("#"+s).value=$("#"+n).value;});
+});
+document.querySelectorAll("input").forEach(el=>el.addEventListener("input",calc));
+
+applyLang();
+</script>
+</body>
+</html>
