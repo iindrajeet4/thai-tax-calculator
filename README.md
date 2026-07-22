@@ -51,3 +51,12 @@ Use it right away at **https://iindrajeet4.github.io/thai-tax-calculator/**, or 
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE)
+
+---
+
+## 💼 Services & custom work
+
+I take on freelance and contract work around this project — custom implementation,
+new features, and integration with your stack.
+
+**Contact:** [GitHub @iindrajeet4](https://github.com/iindrajeet4) (opening an issue on this repo works too) · [DubeGames](https://dubegames.indrajeetdubeyy.workers.dev/)
